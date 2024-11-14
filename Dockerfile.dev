@@ -15,4 +15,4 @@ RUN apk upgrade --no-cache && \
 RUN go mod download
 
 # ホットリロード用コマンド
-CMD ["watchexec", "-w", ".", "--force-poll", "100", "-r", "go", "run", "main.go"]
+CMD ["watchexec", "-w", ".", "--force-poll", "100", "-r", "go", "run", "cmd/server/main.go"]
