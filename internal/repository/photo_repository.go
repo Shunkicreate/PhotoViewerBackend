@@ -23,7 +23,6 @@ func NewPhotoRepository() PhotoRepository {
 func (r *photoRepository) GetTopPhotos(count int) ([]model.Photo, error) {
 	// 環境変数からNASのパスを取得
 	photoDir := os.Getenv("NAS_PATH")
-	fmt.Println("アクセスするパス:", photoDir)
 
 	// ディレクトリを開く
 	dir, err := os.Open(photoDir)
@@ -38,24 +37,29 @@ func (r *photoRepository) GetTopPhotos(count int) ([]model.Photo, error) {
 		return nil, fmt.Errorf("ディレクトリの読み取りに失敗: %v", err)
 	}
 
+	// 画像ファイルのみをフィルタリング
+	var imageFiles []os.FileInfo
+	for _, file := range files {
+		if isImageFile(file.Name()) {
+			imageFiles = append(imageFiles, file)
+		}
+	}
+
 	// ランダムにファイルを選択
-	if len(files) > count {
-		rand.Shuffle(len(files), func(i, j int) {
-			files[i], files[j] = files[j], files[i]
+	if len(imageFiles) > count {
+		rand.Shuffle(len(imageFiles), func(i, j int) {
+			imageFiles[i], imageFiles[j] = imageFiles[j], imageFiles[i]
 		})
-		files = files[:count]
+		imageFiles = imageFiles[:count]
 	}
 
 	var photos []model.Photo
-	for i, file := range files {
-		if !isImageFile(file.Name()) {
-			continue
-		}
+	for i, file := range imageFiles {
 
 		photoPath := fmt.Sprintf("%s/%s", photoDir, file.Name())
 		fileData, err := os.ReadFile(photoPath)
 		if err != nil {
-			return nil, fmt.Errorf("ファイルの読み取りに失敗: %v", err)
+			return nil, fmt.Errorf("ファイルの読み取りに失敗: %v", err, photoPath)
 		}
 
 		photo := model.Photo{
@@ -72,5 +76,6 @@ func (r *photoRepository) GetTopPhotos(count int) ([]model.Photo, error) {
 }
 
 func isImageFile(filename string) bool {
-    return strings.HasSuffix(strings.ToLower(filename), ".jpg") || strings.HasSuffix(strings.ToLower(filename), ".jpeg")
+	lowerFilename := strings.ToLower(filename)
+	return strings.HasSuffix(lowerFilename, ".jpg") || strings.HasSuffix(lowerFilename, ".jpeg") || strings.HasSuffix(lowerFilename, ".png")
 }
