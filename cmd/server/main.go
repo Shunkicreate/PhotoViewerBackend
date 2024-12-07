@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"photo_viewer_backend/internal/handler"
 	"photo_viewer_backend/internal/repository"
 	"photo_viewer_backend/internal/service"
@@ -25,8 +26,12 @@ func main() {
 	r.Get("/top-photos", photoHandler.GetTopPhotos)
 
 	// サーバーを起動
-	fmt.Println("Starting server on :8080")
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	port := "8080"
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		port = envPort
+	}
+	fmt.Printf("Starting server on :%s\n", port)
+	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatal(err)
 	}
 }
