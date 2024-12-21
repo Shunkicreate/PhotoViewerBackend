@@ -13,6 +13,6 @@ func NewPhotoService(repo repository.PhotoRepository) *PhotoService {
     return &PhotoService{repo: repo}
 }
 
-func (s *PhotoService) GetTopPhotos(count int) ([]model.Photo, error) {
-    return s.repo.GetTopPhotos(count)
+func (s *PhotoService) GetTopPhotos(count, width, height int) ([]model.ImageFile, error) {
+    return s.repo.GetTopPhotos(count, width, height)
 }

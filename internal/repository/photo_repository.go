@@ -1,17 +1,18 @@
 package repository
 
 import (
+    "encoding/json"
     "fmt"
-    "math/rand"
-    "os"
+    "io"
+    "net/http"
     "photo_viewer_backend/internal/model"
-    "strings"
     "sync"
     "time"
+    "os"
 )
 
 type PhotoRepository interface {
-    GetTopPhotos(count int) ([]model.Photo, error)
+    GetTopPhotos(count int, width int, height int) ([]model.ImageFile, error)
 }
 
 type photoRepository struct {
@@ -19,84 +20,62 @@ type photoRepository struct {
     cacheMutex     sync.Mutex
     cacheTime      map[string]time.Time
     cacheTTL       time.Duration
+    apiBaseURL     string
 }
 
 func NewPhotoRepository() PhotoRepository {
     return &photoRepository{
-        fileCache:  make(map[string][]byte),
-        cacheTime:  make(map[string]time.Time),
-        cacheTTL:   10 * time.Minute, // キャッシュの有効期限を10分に設定
+        fileCache:   make(map[string][]byte),
+        cacheTime:   make(map[string]time.Time),
+        cacheTTL:    10 * time.Minute,
+        apiBaseURL:  fmt.Sprintf("http://%s:8090/api", os.Getenv("NAS_PATH")),
     }
 }
 
-func (r *photoRepository) GetTopPhotos(count int) ([]model.Photo, error) {
-    // 環境変数からNASのパスを取得
-    photoDir := os.Getenv("NAS_PATH")
-
-    // ディレクトリを開く
-    dir, err := os.Open(photoDir)
+func (r *photoRepository) GetTopPhotos(count, width, height int) ([]model.ImageFile, error) {
+    // APIエンドポイントを構築
+    url := fmt.Sprintf("%s/files/random?count=%d&width=%d&height=%d", r.apiBaseURL, count, width, height)
+    
+    // HTTPリクエストを送信
+    resp, err := http.Get(url)
     if err != nil {
-        return nil, fmt.Errorf("写真ディレクトリへのアクセスに失敗: %v", err)
+        return nil, fmt.Errorf("APIリクエストに失敗: %v", err)
     }
-    defer dir.Close()
+    defer resp.Body.Close()
 
-    // ディレクトリ内のファイル一覧を取得
-    files, err := dir.Readdir(-1)
+    if resp.StatusCode != http.StatusOK {
+        return nil, fmt.Errorf("APIから不正なレスポンス: %s", resp.Status)
+    }
+
+    // レスポンスボディを読み取り
+    body, err := io.ReadAll(resp.Body)
     if err != nil {
-        return nil, fmt.Errorf("ディレクトリの読み取りに失敗: %v", err)
+        return nil, fmt.Errorf("レスポンスの読み取りに失敗: %v", err)
     }
 
-    // 画像ファイルのみをフィルタリング
-    var imageFiles []os.FileInfo
-    for _, file := range files {
-        if isImageFile(file.Name()) {
-            imageFiles = append(imageFiles, file)
-        }
+    // ImageFileの配列にデコード
+    var imageFiles []model.ImageFile
+    if err := json.Unmarshal(body, &imageFiles); err != nil {
+        return nil, fmt.Errorf("JSONのデコードに失敗: %v", err)
     }
 
-    // ランダムにファイルを選択
-    if len(imageFiles) > count {
-        rand.Shuffle(len(imageFiles), func(i, j int) {
-            imageFiles[i], imageFiles[j] = imageFiles[j], imageFiles[i]
-        })
-        imageFiles = imageFiles[:count]
-    }
-
-    var photos []model.Photo
-    for i, file := range imageFiles {
-        photoPath := fmt.Sprintf("%s/%s", photoDir, file.Name())
-
-        // キャッシュを確認
+    // キャッシュの更新
+    for _, imgFile := range imageFiles {
         r.cacheMutex.Lock()
-        fileData, cached := r.fileCache[photoPath]
-        if cached && time.Since(r.cacheTime[photoPath]) < r.cacheTTL {
-            r.cacheMutex.Unlock()
-        } else {
-            // キャッシュがないか期限切れの場合、ファイルを読み込む
-            fileData, err = os.ReadFile(photoPath)
-            if err != nil {
-                r.cacheMutex.Unlock()
-                return nil, fmt.Errorf("ファイルの読み取りに失敗: %v", err)
-            }
-            // キャッシュを更新
-            r.fileCache[photoPath] = fileData
-            r.cacheTime[photoPath] = time.Now()
-            r.cacheMutex.Unlock()
+        if !r.isCacheValid(imgFile.Path) {
+            r.fileCache[imgFile.Path] = imgFile.Data
+            r.cacheTime[imgFile.Path] = time.Now()
         }
-
-        photo := model.Photo{
-            ID:          fmt.Sprintf("%x%x", i+1, len(file.Name())*17),
-            Title:       file.Name(),
-            URL:         fmt.Sprintf("file://%s", photoPath),
-            Description: "", // ファイルの説明は今後必要に応じて追加
-            ImageData:   fileData,
-        }
-        photos = append(photos, photo)
+        r.cacheMutex.Unlock()
     }
 
-    return photos, nil
+    return imageFiles, nil
 }
 
-func isImageFile(filename string) bool {
-    return strings.HasSuffix(strings.ToLower(filename), ".jpg") || strings.HasSuffix(strings.ToLower(filename), ".jpeg") || strings.HasSuffix(strings.ToLower(filename), ".png")
+func (r *photoRepository) isCacheValid(path string) bool {
+    _, exists := r.fileCache[path]
+    if !exists {
+        return false
+    }
+    return time.Since(r.cacheTime[path]) < r.cacheTTL
 }
