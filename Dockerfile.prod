@@ -10,10 +10,10 @@ COPY . .
 RUN go mod tidy
 
 # 本番用にバイナリをビルド
-RUN GOOS=linux GOARCH=amd64 go build -o api-server .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o api-server ./cmd/server
 
 # 本番用ステージ
-FROM gcr.io/distroless/base
+FROM alpine:latest
 
 # ビルドしたバイナリをコピー
 COPY --from=builder /app/api-server /api-server
