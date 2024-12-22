@@ -13,6 +13,7 @@ import (
 
 type PhotoRepository interface {
     GetTopPhotos(count int, width int, height int) ([]model.ImageFile, error)
+    GetPhoto(path string, width int, height int) (*http.Response, error)
 }
 
 type photoRepository struct {
@@ -70,6 +71,24 @@ func (r *photoRepository) GetTopPhotos(count, width, height int) ([]model.ImageF
     }
 
     return imageFiles, nil
+}
+
+func (r *photoRepository) GetPhoto(path string, width, height int) (*http.Response, error) {
+    // APIエンドポイントを構築
+    url := fmt.Sprintf("%s/files/image/nas/%s", r.apiBaseURL, path)
+    fmt.Println(url)
+
+    // HTTPリクエストを送信
+    resp, err := http.Get(url)
+    if err != nil {
+        return nil, fmt.Errorf("APIリクエストに失敗: %v", err)
+    }
+
+    if resp.StatusCode != http.StatusOK {
+        return nil, fmt.Errorf("APIから不正なレスポンス: %s", resp.Status)
+    }
+
+    return resp, nil
 }
 
 func (r *photoRepository) isCacheValid(path string) bool {

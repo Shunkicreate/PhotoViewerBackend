@@ -24,6 +24,7 @@ func main() {
 
 	// エンドポイントを設定
 	r.Get("/top-photos", photoHandler.GetTopPhotos)
+	r.Get("/photo", photoHandler.GetPhoto)
 
 	// サーバーを起動
 	port := "8080"
