@@ -7,6 +7,7 @@ import (
     "strconv"
     "io"
     "fmt"
+    "log"
 )
 
 type PhotoHandler struct {
@@ -25,6 +26,7 @@ func (h *PhotoHandler) GetTopPhotos(w http.ResponseWriter, r *http.Request) {
         var err error
         count, err = strconv.Atoi(countStr)
         if err != nil || count <= 0 {
+            log.Printf("Invalid 'count' parameter: %v", err)
             http.Error(w, "無効なパラメータ", http.StatusBadRequest)
             return
         }
@@ -32,11 +34,12 @@ func (h *PhotoHandler) GetTopPhotos(w http.ResponseWriter, r *http.Request) {
 
     // Get the 'width' parameter from the query string
     widthStr := r.URL.Query().Get("width")
-    width := 0 // デフォルト値
+    width := 640
     if widthStr != "" {
         var err error
         width, err = strconv.Atoi(widthStr)
         if err != nil || width <= 0 {
+            log.Printf("Invalid 'width' parameter: %v", err)
             http.Error(w, "無効なパラメータ", http.StatusBadRequest)
             return
         }
@@ -44,11 +47,12 @@ func (h *PhotoHandler) GetTopPhotos(w http.ResponseWriter, r *http.Request) {
 
     // Get the 'height' parameter from the query string
     heightStr := r.URL.Query().Get("height")
-    height := 0 // デフォルト値
+    height := 420
     if heightStr != "" {
         var err error
         height, err = strconv.Atoi(heightStr)
         if err != nil || height <= 0 {
+            log.Printf("Invalid 'height' parameter: %v", err)
             http.Error(w, "無効なパラメータ", http.StatusBadRequest)
             return
         }
@@ -56,6 +60,7 @@ func (h *PhotoHandler) GetTopPhotos(w http.ResponseWriter, r *http.Request) {
 
     photos, err := h.service.GetTopPhotos(count, width, height)
     if err != nil {
+        log.Printf("Failed to get top photos: %v", err)
         http.Error(w, "内部サーバーエラー", http.StatusInternalServerError)
         return
     }
@@ -73,6 +78,7 @@ func (h *PhotoHandler) GetPhoto(w http.ResponseWriter, r *http.Request) {
         var err error
         width, err = strconv.Atoi(widthStr)
         if err != nil || width <= 0 {
+            log.Printf("Invalid 'width' parameter: %v", err)
             http.Error(w, "無効なパラメータ", http.StatusBadRequest)
             return
         }
@@ -84,6 +90,7 @@ func (h *PhotoHandler) GetPhoto(w http.ResponseWriter, r *http.Request) {
         var err error
         height, err = strconv.Atoi(heightStr)
         if err != nil || height <= 0 {
+            log.Printf("Invalid 'height' parameter: %v", err)
             http.Error(w, "無効なパラメータ", http.StatusBadRequest)
             return
         }
@@ -91,6 +98,7 @@ func (h *PhotoHandler) GetPhoto(w http.ResponseWriter, r *http.Request) {
 
     resp, err := h.service.GetPhoto(path, width, height)
     if err != nil {
+        log.Printf("Failed to get photo: %v", err)
         fmt.Printf("写真の取得に失敗: %v\n", err)
         http.Error(w, "写真が見つかりません", http.StatusNotFound)
         return

@@ -29,7 +29,7 @@ func NewPhotoRepository() PhotoRepository {
         fileCache:   make(map[string][]byte),
         cacheTime:   make(map[string]time.Time),
         cacheTTL:    10 * time.Minute,
-        apiBaseURL:  fmt.Sprintf("http://%s:8090/api", os.Getenv("NAS_PATH")),
+        apiBaseURL:  fmt.Sprintf("http://%s:8090/api", os.Getenv("NAS_SERVER_PATH")),
     }
 }
 

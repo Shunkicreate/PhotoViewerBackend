@@ -28,7 +28,7 @@ func main() {
 
 	// サーバーを起動
 	port := "8080"
-	if envPort := os.Getenv("PORT"); envPort != "" {
+	if envPort := os.Getenv("BACKEND_PORT"); envPort != "" {
 		port = envPort
 	}
 	fmt.Printf("Starting server on :%s\n", port)

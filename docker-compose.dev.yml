@@ -7,8 +7,8 @@ services:
     volumes:
       - .:/app  # ホットリロード用にソースコードをコンテナにマウント
     ports:
-      - "${PORT}:${PORT}"
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
     environment:
       - ENV=development
-      - NAS_PATH=${NAS_PATH}
-      - PORT=${PORT}
+      - NAS_SERVER_PATH=${NAS_SERVER_PATH}
+      - BACKEND_PORT=${BACKEND_PORT}
